@@ -1,0 +1,172 @@
+# =============================================================================
+# Review-Loop pipeline for Maestro Cue (生产版:v2 - 文件化复核交接)
+#   cc (Claude Code) 实现 -> codex 复核 -> cc 修改 ... 循环 3 轮 -> opencode 测试
+#
+# 相比 v1 的改进:复核意见不再只靠 {{CUE_SOURCE_OUTPUT}}(会被截断到 5000 字),
+# 而是 codex 把完整复核写到 .maestro/reviews/review-N.md,cc 直接读文件。
+# stdout 只回传「短摘要 + 结论」,无论复核多长都不会丢。
+#
+# 部署: 复制本文件到「三个 agent 共享的项目根目录」下的 .maestro/cue.yaml
+#   （cc / codex / opencode 三个 agent 必须指向同一个项目目录。）
+#
+# 使用前必须替换 3 个占位符(见 settings.owner_agent_id 及各 agent_id)。
+# 触发: maestro-cli cue trigger implement --prompt "实现 XXX 功能"
+#   （需要桌面 app 在运行,因为 trigger 走 WebSocket。）
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# TODO: 把 AGENT_CC / AGENT_CODEX / AGENT_OPEN 换成真实 agent。
+#   推荐用 UUID(`maestro-cli list agents` 查看),改名后仍有效。
+# -----------------------------------------------------------------------------
+
+
+settings:
+  timeout_minutes: 30
+  max_concurrent: 1            # 线性链,串行即可;也防止同一触发重叠执行
+  queue_size: 64
+  # 三个 agent 共享同一 projectRoot 时,必须 pin 一个 owner,否则非 owner 的订阅
+  # 会被静默抑制(Cue 头号 gotcha)。owner 是「调度者」,不是「执行者」。
+  owner_agent_id: AGENT_CC      # <-- 替换
+
+
+subscriptions:
+  # ===========================================================================
+  # 节点 0 (根触发): cc 实现功能。手动用 cli.trigger 启动整条流水线。深度 0。
+  # ===========================================================================
+  - name: implement
+    pipeline_name: Review-Loop
+    pipeline_color: "#06b6d4"
+    event: cli.trigger
+    agent_id: AGENT_CC          # <-- 替换
+    prompt: |
+      你是本流水线的「实现者」。请完成以下任务,直接在当前项目里写/改代码:
+
+      {{CUE_CLI_PROMPT}}
+
+      要求:
+      - 只改代码,不要跑长测试(测试交给流水线末端的 opencode)。
+      - 完成后用 3-5 条要点总结你改了哪些文件、做了什么(这段总结会传给复核者)。
+
+  # ===========================================================================
+  # 第 1 轮:codex 复核(写文件) -> cc 修改(读文件)
+  # ===========================================================================
+  - name: review-1
+    pipeline_name: Review-Loop
+    event: agent.completed
+    source_session: AGENT_CC       # <-- 替换(上游是 cc)
+    source_sub: implement           # 关键: 只在 implement 完成后触发,防止自激
+    agent_id: AGENT_CODEX          # <-- 替换(本步由 codex 执行)
+    prompt: |
+      你是本流水线的「复核者」(第 1 轮)。实现者的工作总结:
+
+      {{CUE_SOURCE_OUTPUT}}
+
+      请直接读取当前项目里的相关源码进行复核(代码在文件系统里,不在 prompt 里)。
+      做两件事:
+      1. 把【完整复核意见】写入文件 .maestro/reviews/review-1.md
+         (格式: 问题清单,每条含编号 + 严重等级 high/medium/low + 文件:行号 + 修改建议;
+          若整体通过,文件里写 "APPROVE")。
+      2. 在 stdout 只输出一个简短摘要(3-6 行:总体结论 + 最严重的 1-3 条问题标题,
+         以及 "详见 .maestro/reviews/review-1.md")。摘要务必简短,会原样传给实现者。
+
+  - name: revise-1
+    pipeline_name: Review-Loop
+    event: agent.completed
+    source_session: AGENT_CODEX    # <-- 替换(上游是 codex)
+    source_sub: review-1
+    agent_id: AGENT_CC            # <-- 替换(回到 cc 修改)
+    prompt: |
+      复核者(第 1 轮)的摘要:
+
+      {{CUE_SOURCE_OUTPUT}}
+
+      请读取完整复核意见文件:.maestro/reviews/review-1.md
+      据此修改代码。若某条意见你不认同,在该条旁边简要说明理由。
+      改完用要点总结本次修改。
+
+  # ===========================================================================
+  # 第 2 轮
+  # ===========================================================================
+  - name: review-2
+    pipeline_name: Review-Loop
+    event: agent.completed
+    source_session: AGENT_CC
+    source_sub: revise-1
+    agent_id: AGENT_CODEX
+    prompt: |
+      你是本流水线的「复核者」(第 2 轮)。实现者针对上一轮意见的修改总结:
+
+      {{CUE_SOURCE_OUTPUT}}
+
+      请重新读取相关源码,重点确认上一轮提出的问题是否已解决,并发现新问题。
+      做两件事:
+      1. 把【完整复核意见】写入 .maestro/reviews/review-2.md(格式同第 1 轮)。
+      2. stdout 只输出简短摘要(3-6 行 + "详见 .maestro/reviews/review-2.md")。
+
+  - name: revise-2
+    pipeline_name: Review-Loop
+    event: agent.completed
+    source_session: AGENT_CODEX
+    source_sub: review-2
+    agent_id: AGENT_CC
+    prompt: |
+      复核者(第 2 轮)的摘要:
+
+      {{CUE_SOURCE_OUTPUT}}
+
+      请读取完整复核意见文件:.maestro/reviews/review-2.md
+      据此再次修改代码。不认同的意见简要说明理由。改完用要点总结本次修改。
+
+  # ===========================================================================
+  # 第 3 轮
+  # ===========================================================================
+  - name: review-3
+    pipeline_name: Review-Loop
+    event: agent.completed
+    source_session: AGENT_CC
+    source_sub: revise-2
+    agent_id: AGENT_CODEX
+    prompt: |
+      你是本流水线的「复核者」(第 3 轮,最后一轮)。实现者针对上一轮意见的修改总结:
+
+      {{CUE_SOURCE_OUTPUT}}
+
+      请重新读取相关源码做最终复核。
+      做两件事:
+      1. 把【完整复核意见】写入 .maestro/reviews/review-3.md(格式同前;若通过写 APPROVE)。
+      2. stdout 只输出简短摘要(3-6 行 + "详见 .maestro/reviews/review-3.md")。
+
+  - name: revise-3
+    pipeline_name: Review-Loop
+    event: agent.completed
+    source_session: AGENT_CODEX
+    source_sub: review-3
+    agent_id: AGENT_CC
+    prompt: |
+      复核者(第 3 轮,最后一轮)的摘要:
+
+      {{CUE_SOURCE_OUTPUT}}
+
+      请读取完整复核意见文件:.maestro/reviews/review-3.md
+      做最后一次修改。不认同的意见简要说明理由。改完用要点总结本次修改,
+      并注明本轮遗留的已知问题(若有)。
+
+  # ===========================================================================
+  # 末端:opencode 跑自动化测试
+  # ===========================================================================
+  - name: run-tests
+    pipeline_name: Review-Loop
+    event: agent.completed
+    source_session: AGENT_CC
+    source_sub: revise-3
+    agent_id: AGENT_OPEN          # <-- 替换(由 opencode 执行)
+    prompt: |
+      前面已完成 3 轮「实现 -> 复核 -> 修改」。实现者的最后一次修改总结:
+
+      {{CUE_SOURCE_OUTPUT}}
+
+      请在当前项目里运行自动化测试(单元测试 / 集成测试等),并报告:
+      - 执行了哪些测试命令
+      - 通过 / 失败的数量
+      - 失败用例的根因分析
+      - 总体结论(PASS / FAIL)
