@@ -41,15 +41,15 @@ implement(cc) ─► review-1(codex) ─► revise-1(cc)
 
 Cue 是事件驱动自动化引擎,核心设计就是**「一个 agent 完成后自动触发下一个 agent,并把上一个 agent 的输出注入下一个的 prompt」**,与需求几乎一一对应。
 
-| 需求点 | Cue 对应能力 | 源码位置 |
-| --- | --- | --- |
-| A 完成后触发 B | `agent.completed` 事件 + `source_session` 字段 | `src/main/cue/cue-completion-service.ts` |
-| 把 A 的输出传给 B | `{{CUE_SOURCE_OUTPUT}}` 模板变量(下游 prompt 自动注入上游 stdout) | `src/shared/templateVariables.ts` |
-| A->B->A->B...->C 多跳链 | 链式传播,深度上限 `MAX_CHAIN_DEPTH = 10` | `src/main/cue/cue-engine.ts` |
-| 不同 agent 类型参与 | 每条订阅可指定任意 `agent_id` | `src/shared/cue/contracts.ts` |
-| 自动 / 无人值守触发 | `cli.trigger`、`github.pull_request`、`file.changed`、定时器等 10 种触发源 | `src/cli/commands/cue-trigger.ts` |
-| 可视化编排 | `CuePipelineEditor`(React Flow 拖拽画布,双向同步 YAML) | `src/renderer/components/CuePipelineEditor/` |
-| 声明式配置 | `.maestro/cue.yaml` | `CUE_CONFIG_PATH` |
+| 需求点                  | Cue 对应能力                                                               | 源码位置                                     |
+| ----------------------- | -------------------------------------------------------------------------- | -------------------------------------------- |
+| A 完成后触发 B          | `agent.completed` 事件 + `source_session` 字段                             | `src/main/cue/cue-completion-service.ts`     |
+| 把 A 的输出传给 B       | `{{CUE_SOURCE_OUTPUT}}` 模板变量(下游 prompt 自动注入上游 stdout)          | `src/shared/templateVariables.ts`            |
+| A->B->A->B...->C 多跳链 | 链式传播,深度上限 `MAX_CHAIN_DEPTH = 10`                                   | `src/main/cue/cue-engine.ts`                 |
+| 不同 agent 类型参与     | 每条订阅可指定任意 `agent_id`                                              | `src/shared/cue/contracts.ts`                |
+| 自动 / 无人值守触发     | `cli.trigger`、`github.pull_request`、`file.changed`、定时器等 10 种触发源 | `src/cli/commands/cue-trigger.ts`            |
+| 可视化编排              | `CuePipelineEditor`(React Flow 拖拽画布,双向同步 YAML)                     | `src/renderer/components/CuePipelineEditor/` |
+| 声明式配置              | `.maestro/cue.yaml`                                                        | `CUE_CONFIG_PATH`                            |
 
 **结论**:7 条订阅串成一条链即可完整实现该工作流,0 行源码改动。
 
@@ -69,11 +69,11 @@ Cue 是事件驱动自动化引擎,核心设计就是**「一个 agent 完成后
 
 CLI 已有 `maestro-cli send <agent-id> <message> [--session <id>]`,直接 spawn agent 子进程、返回 JSON(`response` / `sessionId` / `usage`),无需桌面 app。所有 agent 都已声明 headless batch 模式参数:
 
-| Agent | headless 调用 |
-| --- | --- |
+| Agent       | headless 调用                                                                         |
+| ----------- | ------------------------------------------------------------------------------------- |
 | Claude Code | `claude --print --verbose --output-format stream-json --dangerously-skip-permissions` |
-| Codex | `codex exec --json --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check` |
-| OpenCode | `opencode run --format json` |
+| Codex       | `codex exec --json --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check`  |
+| OpenCode    | `opencode run --format json`                                                          |
 
 一个 bash 循环就能串起来(send 给 cc -> 取 `.response` -> 拼进 codex 的 review prompt -> 取复核 -> 拼进 cc 的 revise prompt -> 循环 3 次 -> send 给 opencode 跑测试)。0 源码改动,代价是编排/重试/失败处理/历史记录都得自己写。
 
@@ -84,11 +84,11 @@ CLI 已有 `maestro-cli send <agent-id> <message> [--session <id>]`,直接 spawn
 
 ### 2.5 总体判断
 
-| 问题 | 回答 |
-| --- | --- |
-| 今天能否实现(含变通)? | **能。** Cue 引擎开箱即用,是最贴合的方案。 |
-| 需要多大二次开发? | **几乎为零** —— 核心是写 `.maestro/cue.yaml` + prompt,不改源码。 |
-| 若要更精细能力(可配置循环次数、跨轮记忆、超长复核交接) | 约半天到 2 天的源码微调,详见第 5 节。 |
+| 问题                                                   | 回答                                                             |
+| ------------------------------------------------------ | ---------------------------------------------------------------- |
+| 今天能否实现(含变通)?                                  | **能。** Cue 引擎开箱即用,是最贴合的方案。                       |
+| 需要多大二次开发?                                      | **几乎为零** —— 核心是写 `.maestro/cue.yaml` + prompt,不改源码。 |
+| 若要更精细能力(可配置循环次数、跨轮记忆、超长复核交接) | 约半天到 2 天的源码微调,详见第 5 节。                            |
 
 **这不是「能不能做」的问题,而是「用哪条现成路径做」的问题。推荐用 Cue。**
 
@@ -112,26 +112,26 @@ CLI 已有 `maestro-cli send <agent-id> <message> [--session <id>]`,直接 spawn
 
 ### 3.2 关键参数与约束
 
-| 参数 / 约束 | 值 | 含义 |
-| --- | --- | --- |
-| `MAX_CHAIN_DEPTH` | 10 | 链最大深度;本流水线最深 7,安全。 |
-| `SOURCE_OUTPUT_MAX_CHARS` | 5000 | 注入下游 prompt 的单源输出截断长度。 |
-| `max_concurrent` | 1(默认) | 每会话并发,线性链串行即可,且防同一触发重叠。 |
-| `timeout_minutes` | 30(默认) | 单次运行超时。 |
-| batch 模式 | 每跳全新 context | 不保留对话记忆(跨轮记忆见第 5 节)。 |
+| 参数 / 约束               | 值               | 含义                                         |
+| ------------------------- | ---------------- | -------------------------------------------- |
+| `MAX_CHAIN_DEPTH`         | 10               | 链最大深度;本流水线最深 7,安全。             |
+| `SOURCE_OUTPUT_MAX_CHARS` | 5000             | 注入下游 prompt 的单源输出截断长度。         |
+| `max_concurrent`          | 1(默认)          | 每会话并发,线性链串行即可,且防同一触发重叠。 |
+| `timeout_minutes`         | 30(默认)         | 单次运行超时。                               |
+| batch 模式                | 每跳全新 context | 不保留对话记忆(跨轮记忆见第 5 节)。          |
 
 ### 3.3 链路深度核算
 
-| 跳 | 订阅名 | 执行者 | 上游 | 深度 |
-| --- | --- | --- | --- | --- |
-| 0 | `implement` | cc | `cli.trigger`(根) | 0 |
-| 1 | `review-1` | codex | implement | 1 |
-| 2 | `revise-1` | cc | review-1 | 2 |
-| 3 | `review-2` | codex | revise-1 | 3 |
-| 4 | `revise-2` | cc | review-2 | 4 |
-| 5 | `review-3` | codex | revise-2 | 5 |
-| 6 | `revise-3` | cc | review-3 | 6 |
-| 7 | `run-tests` | opencode | revise-3 | 7 |
+| 跳  | 订阅名      | 执行者   | 上游              | 深度 |
+| --- | ----------- | -------- | ----------------- | ---- |
+| 0   | `implement` | cc       | `cli.trigger`(根) | 0    |
+| 1   | `review-1`  | codex    | implement         | 1    |
+| 2   | `revise-1`  | cc       | review-1          | 2    |
+| 3   | `review-2`  | codex    | revise-1          | 3    |
+| 4   | `revise-2`  | cc       | review-2          | 4    |
+| 5   | `review-3`  | codex    | revise-2          | 5    |
+| 6   | `revise-3`  | cc       | review-3          | 6    |
+| 7   | `run-tests` | opencode | revise-3          | 7    |
 
 ---
 
@@ -146,16 +146,16 @@ settings:
   timeout_minutes: 30
   max_concurrent: 1
   queue_size: 64
-  owner_agent_id: AGENT_CC        # 三个 agent 共享 projectRoot 时必须 pin
+  owner_agent_id: AGENT_CC # 三个 agent 共享 projectRoot 时必须 pin
 
 subscriptions:
-  - name: implement               # 根触发,cc 实现
+  - name: implement # 根触发,cc 实现
     event: cli.trigger
     agent_id: AGENT_CC
     prompt: |
       ... {{CUE_CLI_PROMPT}} ...
 
-  - name: review-1                # codex 复核,完整意见写 .maestro/reviews/review-1.md
+  - name: review-1 # codex 复核,完整意见写 .maestro/reviews/review-1.md
     event: agent.completed
     source_session: AGENT_CC
     source_sub: implement
@@ -163,7 +163,7 @@ subscriptions:
     prompt: |
       ... {{CUE_SOURCE_OUTPUT}} ... 写文件 review-1.md,stdout 只回短摘要 ...
 
-  - name: revise-1                # cc 读 review-1.md 后修改
+  - name: revise-1 # cc 读 review-1.md 后修改
     event: agent.completed
     source_session: AGENT_CODEX
     source_sub: review-1
@@ -173,7 +173,7 @@ subscriptions:
 
   # ... review-2 / revise-2 / review-3 / revise-3 同模式 ...
 
-  - name: run-tests               # opencode 跑自动化测试
+  - name: run-tests # opencode 跑自动化测试
     event: agent.completed
     source_session: AGENT_CC
     source_sub: revise-3
@@ -217,6 +217,7 @@ codex 必须可靠地完成「写文件 + 输出短摘要」两件事。若某�
 ### 5.3 触发源扩展
 
 把入口 `implement` 的 `event` 从 `cli.trigger` 换成:
+
 - `github.pull_request` —— 每个 PR 自动跑复核流水线;
 - `file.changed` —— 指定路径(如 `src/**`)变更时自动跑;
 - `task.pending` —— 当某 markdown 出现未勾选任务时跑。
@@ -227,24 +228,24 @@ codex 必须可靠地完成「写文件 + 输出短摘要」两件事。若某�
 
 ## 6. 关键源码索引(便于核实)
 
-| 关注点 | 文件 |
-| --- | --- |
-| 订阅 schema(字段全集) | `src/shared/cue/contracts.ts`(`CueSubscription`) |
-| `agent.completed` 链式分发 | `src/main/cue/cue-completion-service.ts` |
-| 模板变量(`CUE_*`) | `src/shared/templateVariables.ts` |
-| 单跳执行(prompt 替换、spawn) | `src/main/cue/cue-executor.ts` |
-| spawn 参数构建(batch 模式、SSH) | `src/main/cue/cue-spawn-builder.ts` |
-| 输出过滤与 5000 字截断 | `src/main/cue/cue-output-filter.ts` |
-| 模板上下文构建(按事件类型) | `src/main/cue/cue-template-context-builder.ts` |
-| 引擎协调 + 深度上限 | `src/main/cue/cue-engine.ts` |
-| 架构 why / gotchas | `CLAUDE-CUE.md` |
-| 模块级参考 + YAML 示例 | `docs/agent-guides/CUE-PIPELINE.md` |
-| 用户向 Cue 完整规格 | `src/prompts/_maestro-cue.md` |
-| Pianola DAG 引擎 | `src/shared/pianola/pianola-orchestrator.ts`、`pianola-tasks.ts` |
-| Pianola CLI 入口 | `src/cli/commands/pianola-orchestrate.ts` |
-| headless agent spawn | `src/cli/services/agent-spawner.ts` |
-| 各 agent headless 参数 | `src/main/agents/definitions.ts` |
-| Group Chat 架构 | `docs/agent-guides/GROUP-CHAT.md` |
+| 关注点                          | 文件                                                             |
+| ------------------------------- | ---------------------------------------------------------------- |
+| 订阅 schema(字段全集)           | `src/shared/cue/contracts.ts`(`CueSubscription`)                 |
+| `agent.completed` 链式分发      | `src/main/cue/cue-completion-service.ts`                         |
+| 模板变量(`CUE_*`)               | `src/shared/templateVariables.ts`                                |
+| 单跳执行(prompt 替换、spawn)    | `src/main/cue/cue-executor.ts`                                   |
+| spawn 参数构建(batch 模式、SSH) | `src/main/cue/cue-spawn-builder.ts`                              |
+| 输出过滤与 5000 字截断          | `src/main/cue/cue-output-filter.ts`                              |
+| 模板上下文构建(按事件类型)      | `src/main/cue/cue-template-context-builder.ts`                   |
+| 引擎协调 + 深度上限             | `src/main/cue/cue-engine.ts`                                     |
+| 架构 why / gotchas              | `CLAUDE-CUE.md`                                                  |
+| 模块级参考 + YAML 示例          | `docs/agent-guides/CUE-PIPELINE.md`                              |
+| 用户向 Cue 完整规格             | `src/prompts/_maestro-cue.md`                                    |
+| Pianola DAG 引擎                | `src/shared/pianola/pianola-orchestrator.ts`、`pianola-tasks.ts` |
+| Pianola CLI 入口                | `src/cli/commands/pianola-orchestrate.ts`                        |
+| headless agent spawn            | `src/cli/services/agent-spawner.ts`                              |
+| 各 agent headless 参数          | `src/main/agents/definitions.ts`                                 |
+| Group Chat 架构                 | `docs/agent-guides/GROUP-CHAT.md`                                |
 
 ---
 

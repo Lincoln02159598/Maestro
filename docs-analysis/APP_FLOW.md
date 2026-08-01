@@ -61,6 +61,7 @@
    进程崩溃 → exit-listener → 状态转 idle/red
 → 完成条件:进程退出(exitCode)→ 会话状态转 idle(绿)
 ```
+
 证据:`src/main/process-manager/ProcessManager.ts:85-175`、`src/main/process-listeners/index.ts:32-60`、`src/renderer/hooks/agent/useAgentListeners.ts`、`src/renderer/components/MainPanel/MainPanelContent.tsx:631-1030`。
 
 ## 3. 视图/模式切换
@@ -76,10 +77,11 @@
 ## 5. 数据保存与持久化
 
 [Evidence] 持久化分三层:
+
 - electron-store:`maestro-sessions.json`(会话/标签)、`maestro-settings.json`、`maestro-groups.json` 等。
 - SQLite:`stats.db`(用量)、cue.db(Cue 事件)。
 - 历史:`history/<sessionId>.json`(每会话 ≤5000 条,原子写)。
-证据:`src/main/stores/instances.ts`、`src/main/stats/stats-db.ts`、`src/main/history-manager.ts`。
+  证据:`src/main/stores/instances.ts`、`src/main/stats/stats-db.ts`、`src/main/history-manager.ts`。
 
 [Evidence] 数据导入/导出:存在 playbook 导入/导出(带 assets 的 ZIP,`src/main/ipc/handlers/playbooks.ts`)、marketplace 导入(`src/main/ipc/handlers/marketplace.ts`)、theme 导入/导出(CLI `theme import/export`)。
 证据:`docs/agent-guides/CLI-PLAYBOOKS.md`、`src/cli/index.ts`(theme 命令组)。

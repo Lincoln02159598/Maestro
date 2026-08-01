@@ -37,6 +37,7 @@
 - Preload 桥:`contextBridge.exposeInMainWorld('maestro', {...})`,~50 命名空间,每命名空间一 `createXxxApi()` 工厂。
 
 ### 典型 handler 示例:process:spawn
+
 ```
 入口:ipc/handlers/process.ts → handleProcessSpawn( ipc/handlers/process/handle-spawn.ts )
 → 参数:ProcessConfig(sessionId, toolType, cwd, command, args, prompt, sshRemoteId, ...)
@@ -53,6 +54,7 @@
 ## 3. 数据访问层 / 数据库 / Schema / 迁移
 
 ### electron-store(9 实例,`stores/instances.ts:81-179`)
+
 - `maestro-bootstrap.json`(同步路径真相源)、`maestro-settings.json`、`maestro-sessions.json`、`maestro-groups.json`(syncPath)
 - `maestro-agent-configs.json`、`maestro-agent-capabilities.json`(productionDataPath,dev/prod 共享)
 - `maestro-window-state.json`(默认 userData,按设备)
@@ -60,13 +62,16 @@
 - 迁移:`stores/migrations/`(一次性幂等,各带 marker):multi-window-state、playbooks-folder、api-mode-default、adaptive-mode-default。
 
 ### SQLite(better-sqlite3,WAL)
+
 - `stats.db`(`stats/stats-db.ts:79`):迁移 `stats/migrations.ts`;CRUD 模块 query-events/auto-run/session-lifecycle/aggregations/data-management/image-annotations/shortcut-usage/multi-window-usage;单例 `stats/singleton.ts`。
 - `cue.db`(`cue/cue-db.ts:9-120`):表 `cue_events / cue_heartbeat / cue_github_seen`,加列迁移 `:92-99`。
 
 ### 会话存储
+
 - `storage/index.ts:36-42`:`initializeSessionStorages()` 注册 5 实现(Claude/OpenCode/Codex/FactoryDroid/Copilot),均继承 `BaseSessionStorage`。
 
 ### 历史
+
 - `history-manager.ts`:迁移自 legacy `maestro-history.json` → `history/<sessionId>.json`,原子写,每会话 ≤5000 条。
 
 ## 4. 事务 / 并发 / 后台任务

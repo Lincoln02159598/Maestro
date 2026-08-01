@@ -19,15 +19,13 @@
 #   推荐用 UUID(`maestro-cli list agents` 查看),改名后仍有效。
 # -----------------------------------------------------------------------------
 
-
 settings:
   timeout_minutes: 30
-  max_concurrent: 1            # 线性链,串行即可;也防止同一触发重叠执行
+  max_concurrent: 1 # 线性链,串行即可;也防止同一触发重叠执行
   queue_size: 64
   # 三个 agent 共享同一 projectRoot 时,必须 pin 一个 owner,否则非 owner 的订阅
   # 会被静默抑制(Cue 头号 gotcha)。owner 是「调度者」,不是「执行者」。
-  owner_agent_id: AGENT_CC      # <-- 替换
-
+  owner_agent_id: AGENT_CC # <-- 替换
 
 subscriptions:
   # ===========================================================================
@@ -35,9 +33,9 @@ subscriptions:
   # ===========================================================================
   - name: implement
     pipeline_name: Review-Loop
-    pipeline_color: "#06b6d4"
+    pipeline_color: '#06b6d4'
     event: cli.trigger
-    agent_id: AGENT_CC          # <-- 替换
+    agent_id: AGENT_CC # <-- 替换
     prompt: |
       你是本流水线的「实现者」。请完成以下任务,直接在当前项目里写/改代码:
 
@@ -53,9 +51,9 @@ subscriptions:
   - name: review-1
     pipeline_name: Review-Loop
     event: agent.completed
-    source_session: AGENT_CC       # <-- 替换(上游是 cc)
-    source_sub: implement           # 关键: 只在 implement 完成后触发,防止自激
-    agent_id: AGENT_CODEX          # <-- 替换(本步由 codex 执行)
+    source_session: AGENT_CC # <-- 替换(上游是 cc)
+    source_sub: implement # 关键: 只在 implement 完成后触发,防止自激
+    agent_id: AGENT_CODEX # <-- 替换(本步由 codex 执行)
     prompt: |
       你是本流水线的「复核者」(第 1 轮)。实现者的工作总结:
 
@@ -72,9 +70,9 @@ subscriptions:
   - name: revise-1
     pipeline_name: Review-Loop
     event: agent.completed
-    source_session: AGENT_CODEX    # <-- 替换(上游是 codex)
+    source_session: AGENT_CODEX # <-- 替换(上游是 codex)
     source_sub: review-1
-    agent_id: AGENT_CC            # <-- 替换(回到 cc 修改)
+    agent_id: AGENT_CC # <-- 替换(回到 cc 修改)
     prompt: |
       复核者(第 1 轮)的摘要:
 
@@ -159,7 +157,7 @@ subscriptions:
     event: agent.completed
     source_session: AGENT_CC
     source_sub: revise-3
-    agent_id: AGENT_OPEN          # <-- 替换(由 opencode 执行)
+    agent_id: AGENT_OPEN # <-- 替换(由 opencode 执行)
     prompt: |
       前面已完成 3 轮「实现 -> 复核 -> 修改」。实现者的最后一次修改总结:
 

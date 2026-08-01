@@ -13,9 +13,11 @@
 ## 本任务新增文件(全部位于 docs-analysis/)
 
 11 份规定文档:
+
 - TECH_STACK.md, PRD.md, APP_FLOW.md, SOURCE_ARCHITECTURE.md, BACKEND_Development.md, FRONTEND_GUIDELINES.md, 运行时架构.md, 核心数据流.md, 模块-函数-说明.md, 扩展机制.md, 测试与CI.md
 
 evidence/(基线):
+
 - repository-snapshot.md, git-status-before.txt, submodule-status.txt, inventory-by-area.txt
 
 scripts/: 未创建(本任务未需要辅助脚本,全部证据由只读命令直接收集)。

@@ -50,26 +50,26 @@
 
 ## 4. 功能实现状态矩阵
 
-| 功能 | 文档/README 声明 | 源码状态 | 运行时入口 | 测试证据 | 最终判断 |
-| --- | --- | --- | --- | --- | --- |
-| 多 agent 管理 | 声明(Active) | `src/shared/agentIds.ts` 11 个 ID;创建/删除/分组实现 | 主窗口 Left Bar + IPC `sessions`/`groups` | 大量 renderer/main 测试 | **已完整实现** |
-| Claude Code 集成 | Active | definitions + parser + storage + maestro-p 包装 | 主流程 | cue/process 测试 | **已完整实现** |
-| Codex / OpenCode / Factory Droid | Active/Beta | definitions + parsers + storage | 主流程 | 各 parser 测试 | **已实现** |
-| Copilot-CLI | Beta(BETA_AGENTS) | definition + parser | 主流程 | 测试存在 | **已实现(Beta)** |
-| Gemini-CLI / Qwen3-Coder / Hermes / Pi / OMP | CLAUDE.md 未列;`agentMetadata` 标 Beta | ID 已注册、可创建 agent | 可选 agent 类型 | 见各 capability | **已注册但文档未推广** |
-| Cue 自动化引擎 | 文档有 | `src/main/cue/` 全套;`cueEngine.start('system-boot')` 门控于 `maestroCue` | Encore 开关 | `src/__tests__/main/cue/`(66 文件) | **已完整实现(门控)** |
-| Group Chat(主持人+参与者) | 文档有 | `src/main/group-chat/` 全套 | 交互式入口 | 11+ 文件测试 | **已实现(仅交互式)** |
-| Pianola DAG 编排 | 文档未在主表 | `src/shared/pianola/` + CLI `pianola orchestrate` | Encore `pianola` | orchestrator 测试 | **已实现(门控,部分 stub)** |
-| 插件系统 | CLAUDE.md 有专章 | `src/main/plugins/` + `src/shared/plugins/` 真实沙箱/签名/账本 | Encore `plugins` | 31+22 测试文件 | **已完整实现(门控)** |
-| Plugin SDK(`@maestro/plugin-sdk`) | 插件文档 | `packages/plugin-sdk/` 独立发布 | npm 包 | drift 测试 | **已实现** |
-| Web-desktop(浏览器/PWA) | 文档有 | `src/web-desktop/`(4 文件)+ `src/web/public/` | `dev:web-desktop` | 2 测试 | **已实现** |
-| SSH 远程执行 | 文档有 | `wrapSpawnWithSsh` + runners | spawn 路径 | 测试 | **已实现** |
-| Auto Run / Playbooks | 文档有 | `src/renderer/hooks/batch/` + `src/cli/services/batch-processor.ts` | UI + CLI | 大量测试 | **已实现** |
-| Goal-Driven Auto Run | CLI 文档 | `src/shared/goalDriven/` + CLI `goal-run` | CLI + hook | 测试 | **已实现** |
-| 自动更新 | electron-builder 配置 | `publish: github` + window-manager auto-updater | 启动 | release.yml | **已实现** |
-| cloudflared 隧道 | 设置项 | `src/main/tunnel-manager.ts` | 设置开关 | 测试存在 | **已实现(可选)** |
-| 实验性:Cadenza / Movement | AppShell 中 Encore 门控渲染 | `CadenzaLayer`/`MovementOverlay` | Encore | - | **已实现(门控,实验性)** |
-| `requestMerge`(Pianola) | - | stub,始终返回未合并 | - | orchestrator 注释 | **仅占位** |
+| 功能                                         | 文档/README 声明                       | 源码状态                                                                  | 运行时入口                                | 测试证据                           | 最终判断                   |
+| -------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------- | -------------------------- |
+| 多 agent 管理                                | 声明(Active)                           | `src/shared/agentIds.ts` 11 个 ID;创建/删除/分组实现                      | 主窗口 Left Bar + IPC `sessions`/`groups` | 大量 renderer/main 测试            | **已完整实现**             |
+| Claude Code 集成                             | Active                                 | definitions + parser + storage + maestro-p 包装                           | 主流程                                    | cue/process 测试                   | **已完整实现**             |
+| Codex / OpenCode / Factory Droid             | Active/Beta                            | definitions + parsers + storage                                           | 主流程                                    | 各 parser 测试                     | **已实现**                 |
+| Copilot-CLI                                  | Beta(BETA_AGENTS)                      | definition + parser                                                       | 主流程                                    | 测试存在                           | **已实现(Beta)**           |
+| Gemini-CLI / Qwen3-Coder / Hermes / Pi / OMP | CLAUDE.md 未列;`agentMetadata` 标 Beta | ID 已注册、可创建 agent                                                   | 可选 agent 类型                           | 见各 capability                    | **已注册但文档未推广**     |
+| Cue 自动化引擎                               | 文档有                                 | `src/main/cue/` 全套;`cueEngine.start('system-boot')` 门控于 `maestroCue` | Encore 开关                               | `src/__tests__/main/cue/`(66 文件) | **已完整实现(门控)**       |
+| Group Chat(主持人+参与者)                    | 文档有                                 | `src/main/group-chat/` 全套                                               | 交互式入口                                | 11+ 文件测试                       | **已实现(仅交互式)**       |
+| Pianola DAG 编排                             | 文档未在主表                           | `src/shared/pianola/` + CLI `pianola orchestrate`                         | Encore `pianola`                          | orchestrator 测试                  | **已实现(门控,部分 stub)** |
+| 插件系统                                     | CLAUDE.md 有专章                       | `src/main/plugins/` + `src/shared/plugins/` 真实沙箱/签名/账本            | Encore `plugins`                          | 31+22 测试文件                     | **已完整实现(门控)**       |
+| Plugin SDK(`@maestro/plugin-sdk`)            | 插件文档                               | `packages/plugin-sdk/` 独立发布                                           | npm 包                                    | drift 测试                         | **已实现**                 |
+| Web-desktop(浏览器/PWA)                      | 文档有                                 | `src/web-desktop/`(4 文件)+ `src/web/public/`                             | `dev:web-desktop`                         | 2 测试                             | **已实现**                 |
+| SSH 远程执行                                 | 文档有                                 | `wrapSpawnWithSsh` + runners                                              | spawn 路径                                | 测试                               | **已实现**                 |
+| Auto Run / Playbooks                         | 文档有                                 | `src/renderer/hooks/batch/` + `src/cli/services/batch-processor.ts`       | UI + CLI                                  | 大量测试                           | **已实现**                 |
+| Goal-Driven Auto Run                         | CLI 文档                               | `src/shared/goalDriven/` + CLI `goal-run`                                 | CLI + hook                                | 测试                               | **已实现**                 |
+| 自动更新                                     | electron-builder 配置                  | `publish: github` + window-manager auto-updater                           | 启动                                      | release.yml                        | **已实现**                 |
+| cloudflared 隧道                             | 设置项                                 | `src/main/tunnel-manager.ts`                                              | 设置开关                                  | 测试存在                           | **已实现(可选)**           |
+| 实验性:Cadenza / Movement                    | AppShell 中 Encore 门控渲染            | `CadenzaLayer`/`MovementOverlay`                                          | Encore                                    | -                                  | **已实现(门控,实验性)**    |
+| `requestMerge`(Pianola)                      | -                                      | stub,始终返回未合并                                                       | -                                         | orchestrator 注释                  | **仅占位**                 |
 
 ## 5. 已实现 / 部分实现 / 仅占位
 

@@ -80,6 +80,7 @@ graph LR
   CLI -->|WebSocket| Desktop
   maestrop[maestro-p] -->|包装驱动| AgentCLI
 ```
+
 (Evidence:`src/main/index.ts`、`src/main/web-server/WebServer.ts`、`src/cli/services/maestro-client.ts`、`src/maestro-p/index.ts`、`src/main/tunnel-manager.ts`)
 
 ### 2.2 进程/容器图
@@ -120,6 +121,7 @@ graph TB
   App --> Zustand --> Components
   Hooks -.订阅 IPC 事件.-> PreloadAPI
 ```
+
 (Evidence:`src/main/index.ts:488-503` 单例、`:1209-1475` Cue 构造、`:2201-2435` 插件、`src/main/preload/index.ts:84-267`、`src/main/plugins/plugin-sandbox-host.ts`)
 
 ### 2.3 启动时序
@@ -145,6 +147,7 @@ sequenceDiagram
   Idx->>Win: restoreWindows() (2858)
   Win->>Win: 加载 preload + renderer
 ```
+
 (Evidence:`src/main/index.ts:888-2940` 各行号)
 
 ### 2.4 关键调用链(agent prompt 端到端)
@@ -162,6 +165,7 @@ graph LR
   Hook --> Store[sessionStore.aiTabs]
   Store --> View[TerminalOutput/MainPanel]
 ```
+
 (Evidence:`src/renderer/hooks/agent/useAgentExecution.ts`、`src/main/process-manager/ProcessManager.ts:85-211`、`src/main/process-listeners/index.ts:32-60`)
 
 ## 3. 模块边界与依赖方向
@@ -174,6 +178,7 @@ graph LR
 ## 4. 关键子系统
 
 ### 4.1 ProcessManager
+
 - 职责:spawn/write/kill agent 子进程,PTY vs child_process vs opencode-server 路由。
 - 公共接口:`ProcessManager.spawn(config)`、`.write()`、`.kill()`、`.killAll()`。
 - 状态所有权:`private processes: Map<sessionId, ManagedProcess>`。
@@ -181,20 +186,24 @@ graph LR
 - Evidence:`src/main/process-manager/ProcessManager.ts:45-211`。
 
 ### 4.2 Cue 引擎
+
 - 职责:事件驱动自动化(file/time/github/agent.completed/task/cli.trigger → 触发 agent prompt)。
 - 组合 12+ 服务(Registry/RunManager/DispatchService/CompletionService/FanInTracker/Recovery/...)。
 - 深度上限 10、单源输出截断 5000 字。
 - Evidence:`src/main/cue/cue-engine.ts:159-542`、`src/shared/cue/contracts.ts`。
 
 ### 4.3 Group Chat
+
 - hub-and-spoke:主持人(只读 batch agent)+ 多参与者(读写)。仅交互式,无事件触发入口。
 - Evidence:`src/main/group-chat/group-chat-router.ts`、`docs/agent-guides/GROUP-CHAT.md`。
 
 ### 4.4 Plugin 系统
+
 - 真实扩展系统:3 信任层、33 capability、permission broker、Electron utilityProcess + vm 沙箱、ed25519 签名、sealed 授权账本 + 新鲜性锚。
 - Evidence:`src/main/plugins/*`、`src/shared/plugins/*`。
 
 ### 4.5 WebServer
+
 - Fastify REST + WebSocket,token 鉴权,服务 web-desktop 与 CLI 桥,~60 回调。
 - Evidence:`src/main/web-server/WebServer.ts:157`、`web-server-factory.ts`。
 
@@ -207,17 +216,17 @@ graph LR
 
 ## 6. 架构边界审计
 
-| 检查项 | 结论 | Evidence |
-| --- | --- | --- |
-| 循环依赖 | 未发现 main↔renderer 循环;shared 无反向依赖 | import 方向审计 |
-| 跨层调用 | 渲染 services 直连 IPC(设计如此,非违规) | `src/renderer/services/*` |
-| 全局状态 | 主进程模块级单例(mainWindow/processManager/cueEngine...)为有意集中编排 | `index.ts:488-503` |
-| 隐式依赖 | `setupIpcHandlers` 内联展开各 `registerXxx`,而非走 `registerAllHandlers`(注释说明因依赖 richer deps) | `index.ts:3015-3444`、`ipc/handlers/index.ts:216-389` |
-| 模块职责重叠 | `src/web/`(遗留移动 PWA)与 `src/web-desktop/`(现行浏览器构建)并存,前者大部分死代码 | `CLAUDE.md`、仅 1 处跨 import |
-| UI 与业务耦合 | `App.tsx` ~3600 行 god-component,业务/编排/渲染耦合 | `src/renderer/App.tsx` |
-| 平台代码泄漏 | 平台逻辑集中在 `platformDetection.ts`、`ssh-spawn-wrapper.ts`、`getWindowsSpawnConfig`,边界较清晰 | `src/shared/platformDetection.ts` |
-| 错误边界 | 渲染 `ErrorBoundary`;IPC `withErrorLogging`;插件失败隔离 | `ErrorBoundary.tsx`、`ipcHandler.ts` |
-| 生命周期边界 | 退出 hard-exit(SIGKILL)绕过 node-pty 死锁,显式注释 | `quit-handler.ts:58-86` |
+| 检查项        | 结论                                                                                                 | Evidence                                              |
+| ------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| 循环依赖      | 未发现 main↔renderer 循环;shared 无反向依赖                                                          | import 方向审计                                       |
+| 跨层调用      | 渲染 services 直连 IPC(设计如此,非违规)                                                              | `src/renderer/services/*`                             |
+| 全局状态      | 主进程模块级单例(mainWindow/processManager/cueEngine...)为有意集中编排                               | `index.ts:488-503`                                    |
+| 隐式依赖      | `setupIpcHandlers` 内联展开各 `registerXxx`,而非走 `registerAllHandlers`(注释说明因依赖 richer deps) | `index.ts:3015-3444`、`ipc/handlers/index.ts:216-389` |
+| 模块职责重叠  | `src/web/`(遗留移动 PWA)与 `src/web-desktop/`(现行浏览器构建)并存,前者大部分死代码                   | `CLAUDE.md`、仅 1 处跨 import                         |
+| UI 与业务耦合 | `App.tsx` ~3600 行 god-component,业务/编排/渲染耦合                                                  | `src/renderer/App.tsx`                                |
+| 平台代码泄漏  | 平台逻辑集中在 `platformDetection.ts`、`ssh-spawn-wrapper.ts`、`getWindowsSpawnConfig`,边界较清晰    | `src/shared/platformDetection.ts`                     |
+| 错误边界      | 渲染 `ErrorBoundary`;IPC `withErrorLogging`;插件失败隔离                                             | `ErrorBoundary.tsx`、`ipcHandler.ts`                  |
+| 生命周期边界  | 退出 hard-exit(SIGKILL)绕过 node-pty 死锁,显式注释                                                   | `quit-handler.ts:58-86`                               |
 
 ## 7. 生成代码 / vendored / 遗留
 

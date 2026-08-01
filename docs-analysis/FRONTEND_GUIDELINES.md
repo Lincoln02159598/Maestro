@@ -33,7 +33,7 @@
 
 ## 2. 组件层级与目录组织(① 现存规范)
 
-- `components/`:135+ 顶层 `.tsx` + 子目录(MainPanel/、Settings/、Markdown/、Wizard/、InlineWizard/、CueModal/、CuePipelineEditor/、SessionList/、GroupChat*)。
+- `components/`:135+ 顶层 `.tsx` + 子目录(MainPanel/、Settings/、Markdown/、Wizard/、InlineWizard/、CueModal/、CuePipelineEditor/、SessionList/、GroupChat\*)。
 - Modal 统一分区:`AppModals/`(8 文件按关注点切分)+ `AppStandaloneModals`、`AppOverlays`。
 - [Evidence] Modal 注册走 `modalStore` + `modalPriorities.ts`(z-index/escape 优先级表),消费走 `useModalLayer()`(替代手写 `registerLayer`)。
   证据:`src/renderer/stores/modalStore.ts`、`src/renderer/hooks/ui/useModalLayer.ts`、`CLAUDE.md` 规范。

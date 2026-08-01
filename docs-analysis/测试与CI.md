@@ -26,32 +26,32 @@
 
 ## 1. 测试框架与配置
 
-| 配置 | 框架 | 目标 | 关键点 | Evidence |
-| --- | --- | --- | --- | --- |
-| `vitest.config.mts` | Vitest | 单元/集成(主) | jsdom+node 双 project;`pool:forks` `maxWorkers:4`(避免原生插件多线程 SEGFAULT);超时 10s;coverage v8 **无阈值** | `:42-87` |
-| `vitest.integration.config.ts` | Vitest | 真实 agent 流 | jsdom;3min 超时;`singleFork:true` 串行;`bail:1` | `:18-33` |
-| `vitest.e2e.config.ts` | Vitest | WS/真服流 | node;30s 超时 | `:1-31` |
-| `vitest.performance.config.mts` | Vitest | 性能/压力 | jsdom;30s;React plugin | `:1-27` |
-| `playwright.config.ts` | Playwright(electron) | 桌面 E2E | `workers:1` 串行;`fullyParallel:false`;CI 2 次重试;trace on retry | `:16-50` |
-| `packages/plugin-sdk/vitest.config.ts` | Vitest | SDK | 独立;含 typecheck(test-d) | `:1-23` |
+| 配置                                   | 框架                 | 目标          | 关键点                                                                                                         | Evidence |
+| -------------------------------------- | -------------------- | ------------- | -------------------------------------------------------------------------------------------------------------- | -------- |
+| `vitest.config.mts`                    | Vitest               | 单元/集成(主) | jsdom+node 双 project;`pool:forks` `maxWorkers:4`(避免原生插件多线程 SEGFAULT);超时 10s;coverage v8 **无阈值** | `:42-87` |
+| `vitest.integration.config.ts`         | Vitest               | 真实 agent 流 | jsdom;3min 超时;`singleFork:true` 串行;`bail:1`                                                                | `:18-33` |
+| `vitest.e2e.config.ts`                 | Vitest               | WS/真服流     | node;30s 超时                                                                                                  | `:1-31`  |
+| `vitest.performance.config.mts`        | Vitest               | 性能/压力     | jsdom;30s;React plugin                                                                                         | `:1-27`  |
+| `playwright.config.ts`                 | Playwright(electron) | 桌面 E2E      | `workers:1` 串行;`fullyParallel:false`;CI 2 次重试;trace on retry                                              | `:16-50` |
+| `packages/plugin-sdk/vitest.config.ts` | Vitest               | SDK           | 独立;含 typecheck(test-d)                                                                                      | `:1-23`  |
 
 [Evidence] **Vitest 用 `pool:forks` 而非 threads**:threads 快约 19% 但在 node-pty/better-sqlite3 多 worker 下 SEGFAULT。
 证据:`vitest.config.mts:42-43` 注释。
 
 ## 2. 测试结构(`src/__tests__/`,1404+ 文件)
 
-| 子目录 | 文件数(约) | 用途 |
-| --- | --- | --- |
-| `main/` | 349+ | 主进程(cue/group-chat/plugins/process-manager/ipc) |
-| `renderer/` | 394+ | 渲染组件(@testing-library/react) |
-| `shared/` | 100+ | `src/shared` 纯逻辑 |
-| `cli/` | 56 | CLI 命令+服务 |
-| `integration/` | 9 | 真实 agent(group-chat/provider/symphony) |
-| `e2e/` | 2 | Vitest e2E(CopilotProcessManager/WebServerSync) |
-| `performance/` | 5 | AutoRun/ThinkingStream 压力 |
-| `maestro-p/` | 8 | maestro-p |
-| `web/` | 26 | PWA hooks/components |
-| `web-desktop/` | 2 | 浏览器 shim |
+| 子目录         | 文件数(约) | 用途                                               |
+| -------------- | ---------- | -------------------------------------------------- |
+| `main/`        | 349+       | 主进程(cue/group-chat/plugins/process-manager/ipc) |
+| `renderer/`    | 394+       | 渲染组件(@testing-library/react)                   |
+| `shared/`      | 100+       | `src/shared` 纯逻辑                                |
+| `cli/`         | 56         | CLI 命令+服务                                      |
+| `integration/` | 9          | 真实 agent(group-chat/provider/symphony)           |
+| `e2e/`         | 2          | Vitest e2E(CopilotProcessManager/WebServerSync)    |
+| `performance/` | 5          | AutoRun/ThinkingStream 压力                        |
+| `maestro-p/`   | 8          | maestro-p                                          |
+| `web/`         | 26         | PWA hooks/components                               |
+| `web-desktop/` | 2          | 浏览器 shim                                        |
 
 代表文件:Cue 66 文件(`cue-engine.test.ts`、`cue-concurrency.test.ts`、`cue-security.test.ts`、`cue-yaml-roundtrip.test.ts`...);group-chat 11;plugins 53(31 main+22 shared);CLI agent-spawner/batch-processor/maestro-client/goal-runner。
 
@@ -61,48 +61,53 @@
 ## 3. Playwright E2E(`e2e/`)
 
 7 specs + 3 fixtures:
+
 - `autorun-setup/editing/batch/sessions.spec.ts`(Auto Run 向导/编辑/批量/会话)
 - `browser-tab.spec.ts`、`bionify-reading-mode.spec.ts`
 - `plugins.spec.ts`(1124 行,最重:trust gate、broker 矩阵、FC3 调度、事件投递、sealed 授权持久化、panel 渲染宿主、贡献键绑定、扩展市场)
 - fixtures:`electron-app.ts`(746 行,隔离 `MAESTRO_DATA_DIR`、GPU off、`MAESTRO_E2E_TEST`)、`plugin-harness.ts`、`plugin-signing.ts`
 - 需预构建(`build:main && build:renderer`)。
-证据:`e2e/*.spec.ts`、`e2e/fixtures/electron-app.ts:74-85`。
+  证据:`e2e/*.spec.ts`、`e2e/fixtures/electron-app.ts:74-85`。
 
 ## 4. CI 工作流
 
 ### `ci.yml`(38 行,唯一测试门禁)
-- 触发:PR→main/rc/*-RC;push→main/rc。
+
+- 触发:PR→main/rc/\*-RC;push→main/rc。
 - Job `lint-and-format`(ubuntu):`npm ci` → `prettier --check .` → `eslint src/` → `npm run lint`(三 tsconfig 类型检查)。
 - Job `test`:矩阵 `os:[ubuntu-latest, windows-latest]`,`fail-fast:false`,`npm ci` → `npm run test`(`vitest run`,8GB heap)。
 - **不包含**:e2e、integration、performance、coverage、plugin-sdk、maestro-p、web-desktop;**无 macOS 测试腿**。
 
 ### `release.yml`(673 行)
+
 - 触发:semver tag `v*` / date tag `20*` / dispatch。
 - 矩阵:macos-15(固定,非 latest,因 macOS 26 签名 bug)、ubuntu-latest(linux x64)、ubuntu-24.04-arm(arm64)、windows-latest。
 - Job:build(每 OS 打包+原生模块架构校验)→ release(GitHub Release + Discord)→ sync-docs(同步 `docs/releases.md`)。
 - 防护:每架构独立 npm 缓存(防 ARM/x64 prebuild 污染,#116)、原生模块架构校验脚本。
 
 ### `plugin-sdk-publish.yml`(40 行)
+
 - `plugin-sdk-v*` tag / dispatch;bun install+build+vitest+`npm publish`。
 
 ### `stale.yml`(96 行)
+
 - 每日 cron stale bot;60 天 stale + 14 天 close;豁免标签。
 
 证据:`.github/workflows/*.yml`。
 
 ## 5. package.json 脚本 vs CI
 
-| 脚本 | 命令 | CI 执行? |
-| --- | --- | --- |
-| `test` | `vitest run`(8GB) | **是**(ubuntu+windows) |
-| `lint` | 三 tsconfig tsc | **是**(lint job) |
-| `lint:eslint` | `eslint src/` | **是**(CI 直跑 `npx eslint src/`) |
-| format | `prettier --check .` | **是**(CI 直跑) |
-| `test:coverage` | `vitest run --coverage` | 否(手动;无阈值) |
-| `test:e2e` | build + playwright | 否(手动,需构建) |
-| `test:integration` | vitest integration config | 否(手动,需真实 agent) |
-| `test:performance` | vitest performance config | 否(手动) |
-| `validate:push` | format+lint+eslint+test | 否(由 pre-push hook 触发) |
+| 脚本               | 命令                      | CI 执行?                          |
+| ------------------ | ------------------------- | --------------------------------- |
+| `test`             | `vitest run`(8GB)         | **是**(ubuntu+windows)            |
+| `lint`             | 三 tsconfig tsc           | **是**(lint job)                  |
+| `lint:eslint`      | `eslint src/`             | **是**(CI 直跑 `npx eslint src/`) |
+| format             | `prettier --check .`      | **是**(CI 直跑)                   |
+| `test:coverage`    | `vitest run --coverage`   | 否(手动;无阈值)                   |
+| `test:e2e`         | build + playwright        | 否(手动,需构建)                   |
+| `test:integration` | vitest integration config | 否(手动,需真实 agent)             |
+| `test:performance` | vitest performance config | 否(手动)                          |
+| `validate:push`    | format+lint+eslint+test   | 否(由 pre-push hook 触发)         |
 
 ## 6. 覆盖率
 
@@ -112,36 +117,37 @@
 ## 7. Husky / Git hooks
 
 [Evidence] Husky 9,`prepare`→`setup-git-hooks.mjs` 设 `core.hooksPath .husky`。
+
 - `pre-commit` / `pre-merge-commit`:仅 `lint-staged`(prettier+eslint fix)。
 - `pre-push`:删除-only 推送跳过;否则 `npm run validate:push`(format+lint+eslint+test)—— **CI 外唯一完整门禁**。
 - `lint-staged`(`package.json:428-435`):prettier --write;JS/TS 额外 eslint --fix。
-证据:`.husky/pre-push`、`package.json:52,428-435`。
+  证据:`.husky/pre-push`、`package.json:52,428-435`。
 
 ## 8. EXIST vs CONFIGURED vs CI-EXECUTED 矩阵
 
-| 能力 | 文件存在 | 命令配置 | CI 执行 |
-| --- | --- | --- | --- |
-| 单元/集成 | ~1400+ | `test` | **是**(ubuntu+windows) |
-| 真实 agent 集成 | 9 | `test:integration` | 否 |
-| Vitest e2E | 2 | vitest.e2e.config | 否 |
-| Playwright e2E | 7+3 | `test:e2e` | 否 |
-| 性能 | 5 | `test:performance` | 否 |
-| plugin-sdk | 3 | 自身 vitest | 仅 plugin-sdk tag |
-| 覆盖率 | v8 配置 | `test:coverage` | 否(无阈值) |
-| macOS 测试腿 | 多测试 mac-aware | n/a | **否**(矩阵仅 ubuntu+windows) |
-| 类型检查 | 全 tsconfig | `lint` | 是(ubuntu) |
-| 格式/Lint | 全仓/src | CI 直跑 | 是(ubuntu) |
+| 能力            | 文件存在         | 命令配置           | CI 执行                       |
+| --------------- | ---------------- | ------------------ | ----------------------------- |
+| 单元/集成       | ~1400+           | `test`             | **是**(ubuntu+windows)        |
+| 真实 agent 集成 | 9                | `test:integration` | 否                            |
+| Vitest e2E      | 2                | vitest.e2e.config  | 否                            |
+| Playwright e2E  | 7+3              | `test:e2e`         | 否                            |
+| 性能            | 5                | `test:performance` | 否                            |
+| plugin-sdk      | 3                | 自身 vitest        | 仅 plugin-sdk tag             |
+| 覆盖率          | v8 配置          | `test:coverage`    | 否(无阈值)                    |
+| macOS 测试腿    | 多测试 mac-aware | n/a                | **否**(矩阵仅 ubuntu+windows) |
+| 类型检查        | 全 tsconfig      | `lint`             | 是(ubuntu)                    |
+| 格式/Lint       | 全仓/src         | CI 直跑            | 是(ubuntu)                    |
 
 ## 9. 测试覆盖矩阵(抽样,按模块)
 
-| 模块 | 单元 | 集成 | E2E | CI 执行 | 主要缺口 |
-| --- | --- | --- | --- | --- | --- |
-| Cue | 66 文件(强) | engine-integration | - | 是 | 长链/5000 字截断的端到端(见 review-workflow 文档) |
-| Group Chat | 11 | integration | - | 是 | 无 headless 自动化(设计如此) |
-| Plugins | 53(强) | - | plugins.spec.ts(深) | 单元是;E2E 否 | E2E 不在 CI |
-| ProcessManager | 有 | - | - | 是 | 跨平台 PTY 行为(macOS 缺 CI 腿) |
-| CLI | 56 | - | - | 是 | headless 真实 agent |
-| Renderer | 394 | - | autorun/browser/bionify E2E | 单元是 | E2E 不在 CI |
+| 模块           | 单元        | 集成               | E2E                         | CI 执行       | 主要缺口                                          |
+| -------------- | ----------- | ------------------ | --------------------------- | ------------- | ------------------------------------------------- |
+| Cue            | 66 文件(强) | engine-integration | -                           | 是            | 长链/5000 字截断的端到端(见 review-workflow 文档) |
+| Group Chat     | 11          | integration        | -                           | 是            | 无 headless 自动化(设计如此)                      |
+| Plugins        | 53(强)      | -                  | plugins.spec.ts(深)         | 单元是;E2E 否 | E2E 不在 CI                                       |
+| ProcessManager | 有          | -                  | -                           | 是            | 跨平台 PTY 行为(macOS 缺 CI 腿)                   |
+| CLI            | 56          | -                  | -                           | 是            | headless 真实 agent                               |
+| Renderer       | 394         | -                  | autorun/browser/bionify E2E | 单元是        | E2E 不在 CI                                       |
 
 ---
 
